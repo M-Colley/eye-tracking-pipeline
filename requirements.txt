@@ -1,0 +1,27 @@
+--find-links https://download.pytorch.org/whl/torch_stable.html
+
+torch==2.0.1+cu118
+pandas>=2.0.3
+numpy>=1.25.2
+ninja
+
+addict
+diffusers
+gradio
+huggingface_hub
+matplotlib
+onnxruntime
+opencv_python
+Pillow
+pycocotools
+PyYAML
+requests
+setuptools
+supervision
+termcolor
+timm
+torchvision
+transformers
+yapf
+nltk
+fairscale
