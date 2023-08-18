@@ -1,3 +1,5 @@
+![](./images/pipeline.png)
+
 # Source Code for Eye-Tracking using Gaze-Data via [WebGazer.JS](https://github.com/brownhci/WebGazer) and [Grounded Segment Anything](https://github.com/IDEA-Research/Grounded-Segment-Anything)
 
 
