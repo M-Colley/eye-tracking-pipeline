@@ -204,8 +204,25 @@ def get_class_for_hex_exact(hex_code):
 
 
 def get_hex_code_at_position(pil_image, position):
-    # Get the RGB value at the given position
-    r, g, b = pil_image.getpixel(position)
+
+    # Assuming position is a tuple (x, y)
+    x, y = position
+    width, height = pil_image.size
+    r, g, b = 0, 0, 0
+    
+    if 0 <= x < width and 0 <= y < height:
+        r, g, b = pil_image.getpixel(position)
+    else:
+        print("Position is out of bounds in get_hex_code_at_position!")
+        print("position: " + str(position))
+        print("pil_image.size: " + str(pil_image.size))
+        print("Setting RGB to 0,0,0")
+        
+    
+    # Convert to hex code
+    hex_code = "#{:02x}{:02x}{:02x}".format(r, g, b)
+
+    return hex_code
     
     # Convert to hex code
     hex_code = "#{:02x}{:02x}{:02x}".format(r, g, b)
@@ -248,12 +265,21 @@ def get_color_for_class(class_name):
 
 
 def scale_to_fullHD(original_x, original_y, original_max_x, original_max_y):
+    # Check if either value is negative
+    if original_x < 0 or original_y < 0:
+        return None, None
+    
+    # out of bounds
+    if original_x > original_max_x or original_y > original_max_y:
+        return None, None
+
     # we want to scale to FullHD
     target_max_x = 1920
     target_max_y = 1080
 
     scaled_x = (original_x / original_max_x) * target_max_x
     scaled_y = (original_y / original_max_y) * target_max_y
+
 
     return scaled_x, scaled_y
 
@@ -364,6 +390,9 @@ def process_image(image_source, current_eye_gaze, text_prompt, return_segmented_
     if(masks == None):
         skip_enumerate = True
 
+    # eye gaze was negative
+    if current_eye_gaze is None or any(value is  None for value in current_eye_gaze):
+        skip_enumerate = True
 
     # standard values
     detected_class = "NULL"
@@ -383,7 +412,7 @@ def process_image(image_source, current_eye_gaze, text_prompt, return_segmented_
             color = get_color_for_class(str(pred_phrases[idx])[:-6])
             h, w = mask.cpu().numpy().shape[-2:]
             mask_image = mask.cpu().numpy().reshape(h, w, 1) * color.reshape(1, 1, -1)
-            #print("looking at eye coordinate " + str(tuple(current_eye_gaze.T)))
+            print("looking at eye coordinate " + str(tuple(current_eye_gaze.T)))
             values_at_coords = mask_image[tuple(current_eye_gaze)]
             #print("values_at_coords: " + str(values_at_coords))
             if any(value != 0 for value in values_at_coords):
@@ -436,14 +465,38 @@ def calculate_view(frame, yaw, pitch):
     return pers_img_pil
 
 
-
-def process_frame_pre_segmented_360(frame, yaw, pitch, current_eye_gaze):
+def process_frame_pre_segmented_360(outputDirs, frame_counter, frame, yaw, pitch, current_eye_gaze, save_image):
     pers_img_pil = calculate_view(frame, yaw, pitch)
 
-    hex_code = get_hex_code_at_position(pers_img_pil, current_eye_gaze)
+    #print(pers_img_pil.size)
+    #print(current_eye_gaze)
+    # default value
+    class_name = "NULL"
 
-    # You can then pass the hex_code to the get_class_for_hex function
-    class_name = get_class_for_hex(hex_code)
+    if save_image == True:
+        # Add a red filled circle at a specific (x, y) position
+        circle_radius = 8
+        plt.imshow(pers_img_pil)
+        plt.axis('off') # To turn off axes
+        if current_eye_gaze is not None and current_eye_gaze[0] is not None and current_eye_gaze[1] is not None:
+            circle_x = current_eye_gaze[0]  
+            circle_y = current_eye_gaze[1]  
+            
+            plt.scatter(circle_x, circle_y, color='red', s=circle_radius**2, alpha=0.7, edgecolors='none')
+            plt.scatter(circle_x, circle_y, color='black', s=circle_radius**2, alpha=0.7, edgecolors='none', marker="+")
+
+        output = os.path.join("EyeGazeOutput",outputDirs[0], outputDirs[1], outputDirs[2])
+        if not os.path.exists(output):
+            os.makedirs(output)
+        plt.savefig(os.path.join(output, "testBild_" + str(frame_counter) +".png"), bbox_inches='tight', pad_inches=0)
+        # pers_img_pil.save(os.path.join(output, "testBild_" + str(frame_counter) +".png"))
+        plt.clf()
+        print("image saved")
+
+    if current_eye_gaze is not None and current_eye_gaze[0] is not None and current_eye_gaze[1] is not None:
+        hex_code = get_hex_code_at_position(pers_img_pil, current_eye_gaze)
+        # You can then pass the hex_code to the get_class_for_hex function
+        class_name = get_class_for_hex(hex_code)
 
     return class_name
 
