@@ -4,6 +4,8 @@ torch==2.0.1+cu118
 pandas>=2.0.3
 numpy>=1.25.2
 ninja
+progress
+progressbar
 
 addict
 diffusers

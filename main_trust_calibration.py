@@ -1,7 +1,6 @@
 #!/usr/bin/env/python
 import cv2
 import glob
-import re
 import pandas as pd
 import os
 import numpy as np
@@ -15,6 +14,25 @@ import gc
 
 # from config import *
 from functions import *
+from functions_grounding_dino import *
+
+
+
+# ------------------------------
+# DEPRECATED FILE
+# This file is deprecated and will be removed in future versions.
+# Use `new_file.py` instead.
+# ------------------------------
+
+import warnings
+
+# Issue a deprecation warning when the file is imported
+warnings.warn(
+    "This module is deprecated; use main_trust_calibration_parallel_eye_tracking.py instead.",
+    DeprecationWarning,
+    stacklevel=2
+)
+
 
 #os.environ['KMP_DUPLICATE_LIB_OK'] = 'TRUE'
 
@@ -28,14 +46,6 @@ current_file_dir_path = os.path.dirname(os.path.abspath(__file__))
 video_directory = ".\Videos"
 tracking_data_directory = "FOV_Tracking_Data"
 circle_radius = 8
-
-# Function to perform a case-insensitive search for a directory or file
-# usually, in Windows these are already case-ins
-def find_case_insensitive_path(root_path, target_name):
-    for item_name in os.listdir(root_path):
-        if re.match(target_name, item_name, re.I):  # re.I flag makes the match case-insensitive
-            return os.path.join(root_path, item_name)
-    return None
 
 
 # Iterate through all subdirectories under the "Videos" directory
@@ -95,24 +105,34 @@ for study_dir in os.listdir(tracking_data_directory): # Schlecht/Gut
                         break
 
                     if frame_counter % skip_frames == 0:
+
+                        index_to_check = frame_counter // skip_frames
+
+
                         # check whether there are still data available
-                        if pd.isna(csv_data['gazeX'][frame_counter // skip_frames]):
+                                # check whether there are still data available
+                        if index_to_check not in csv_data.index:
                             continue
-                        gazeX = csv_data['gazeX'][frame_counter // skip_frames]
-                        gazeY = csv_data['gazeY'][frame_counter // skip_frames]
-                        displayResX = csv_data['displayResX'][frame_counter // skip_frames]
-                        displayResY = csv_data['displayResY'][frame_counter // skip_frames] 
+                        if pd.isna(csv_data['yaw'][index_to_check]):
+                            continue
+                        
+                        gazeX = csv_data['gazeX'][index_to_check]
+                        gazeY = csv_data['gazeY'][index_to_check]
+                        displayResX = csv_data['displayResX'][index_to_check]
+                        displayResY = csv_data['displayResY'][index_to_check] 
                         #1516.4131910790093	-48.71241166285146	2400	1600
                         gazeX_Scaled, gazeY_Scaled = scale_to_fullHD(gazeX, gazeY, displayResX, displayResY)
                         # add to csv
-                        csv_data['gazeX_Scaled'] = gazeX_Scaled
-                        csv_data['gazeY_Scaled'] = gazeY_Scaled
+                        csv_data.loc['gazeX_Scaled'][index_to_check] = gazeX_Scaled
+                        csv_data.loc['gazeY_Scaled'][index_to_check] = gazeY_Scaled
 
                         #eye_gaze = tuple([gazeX_Scaled,gazeY_Scaled])
                         #coords_int = np.round(eye_gaze).astype(int)  # or np.floor, depends on wishes   
+                                                    
+                        print("X: " + str(gazeX_Scaled))
+                        print("Y: " + str(gazeY_Scaled))
                         
-                        
-                        eye_gaze = (gazeY_Scaled, gazeX_Scaled)
+                        eye_gaze = (gazeX_Scaled, gazeY_Scaled)
                         coords_int = tuple(map(int, np.round(eye_gaze)))  # or np.floor, depends on wishes
                         print(coords_int)
                         # get all relevant data for the current scenario
@@ -142,13 +162,14 @@ for study_dir in os.listdir(tracking_data_directory): # Schlecht/Gut
                         #height, width = frame.shape[:2]
                         #print("Dimensions: Width = {}, Height = {}".format(width, height))
 
-                        detected_class, segmented_image = process_image(image_source=Image.fromarray(frame.astype(np.uint8)), current_eye_gaze=coords_int, text_prompt=text_prompt_custom, return_segmented_image=True)
+                        detected_class, segmented_image = process_image(image_source=Image.fromarray(frame.astype(np.uint8)), current_eye_gaze=coords_int, text_prompt=text_prompt_custom, return_segmented_image=True, show_boxes=False, return_detected_class=False)
                         # add to CSV
 
                         # GroundingDINO also checks combinations, make sure this is not included in the final .csv
                         if "." in detected_class:
                             detected_class = "NULL"
-                        csv_data['detected_class'] = detected_class
+
+                        csv_data.loc['detected_class'][index_to_check] = detected_class
                         print("detected_class: " + detected_class)
 
                         # add gaze point
@@ -163,12 +184,13 @@ for study_dir in os.listdir(tracking_data_directory): # Schlecht/Gut
                         circle_x = gazeX_Scaled  
                         circle_y = gazeY_Scaled  
                         
-                        plt.scatter(circle_x, circle_y, color='red', s=circle_radius**2, alpha=0.7, edgecolors='none')
+                        plt.scatter(circle_x, circle_y, color='white', s=circle_radius**2, alpha=0.7, edgecolors='none')
                         plt.scatter(circle_x, circle_y, color='black', s=circle_radius**2, alpha=0.7, edgecolors='none', marker="+")
 
                         # Save to PNG file
                         output_path = os.path.join(dir_path, f'{outputDirStudy}_{outputDirLevel}_{outputDirFactor}_{outputdirID}_frame_{frame_counter}.png')
                         segmented_image.axis("off")
+                        
                         if segmented_image is not None:
                             segmented_image.savefig(output_path, bbox_inches='tight', pad_inches=0)
                             #segmented_image.save(output_path)
@@ -188,3 +210,11 @@ for study_dir in os.listdir(tracking_data_directory): # Schlecht/Gut
 
                 # Overwrite the original CSV file
                 csv_data.to_csv(os.path.join(current_file_dir_path,csv_path), index=False, sep = ';')
+
+
+                print()
+                print("#######################################")
+                print("#######################################")
+                print("Video done")
+                print("#######################################")
+                print("#######################################")
