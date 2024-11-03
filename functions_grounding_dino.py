@@ -19,8 +19,17 @@ from torchvision import transforms
 
 import supervision as sv
 
-# segment anything
-from segment_anything import build_sam, build_sam_hq, SamPredictor #, SamAutomaticMaskGenerator
+# segment anything 2.1
+from sam2.build_sam import build_sam2
+from sam2.sam2_image_predictor import SAM2ImagePredictor
+
+sam2_checkpoint = "sam2.1_hiera_large.pt"
+model_cfg = "sam2.1/sam2.1_hiera_l.yaml"
+
+sam2_model = build_sam2(model_cfg, sam2_checkpoint, device=device)
+
+predictor_21 = SAM2ImagePredictor(sam2_model)
+
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
@@ -61,13 +70,6 @@ sam_checkpoint = "sam_vit_h_4b8939.pth"
 #sam_predictor = SamPredictor(sam_model)
 
 plt.figure(figsize=(10, 10))
-
-# use SAM-HQ
-sam_hq_checkpoint_tiny = "sam_hq_vit_tiny.pth"
-sam_hq_checkpoint = "sam_hq_vit_h.pth"
-
-sam_model_hq = build_sam_hq(checkpoint=sam_hq_checkpoint).to(device)
-sam_predictor_hq = SamPredictor(sam_model_hq)
 
 
 def load_model_hf(repo_id, filename, ckpt_config_filename, device='cpu'):
@@ -365,7 +367,7 @@ def process_image(image_source, current_eye_gaze, text_prompt, return_segmented_
     #image_with_box = plot_boxes_to_image(copy.deepcopy(image_pil), pred_dict)[0]
 
     image = np.array(image_source)
-    sam_predictor_hq.set_image(image)
+    predictor_21.set_image(image)
 
     H, W = size[1], size[0]
     for i in range(boxes_filt.size(0)):
@@ -374,9 +376,9 @@ def process_image(image_source, current_eye_gaze, text_prompt, return_segmented_
         boxes_filt[i][2:] += boxes_filt[i][:2]
 
     boxes_filt = boxes_filt.to(device)
-    transformed_boxes = sam_predictor_hq.transform.apply_boxes_torch(boxes_filt, image.shape[:2])
+    transformed_boxes = predictor_21.transform.apply_boxes_torch(boxes_filt, image.shape[:2])
 
-    masks, _, _ = sam_predictor_hq.predict_torch(
+    masks, _, _ = predictor_21.predict_torch(
             point_coords = None,
             point_labels = None,
             boxes = transformed_boxes,
@@ -450,7 +452,7 @@ def calculate_view(frame, yaw, pitch):
         mode="bilinear",
     )
 
-    # obtain perspective image
+    # obtain the perspective image
     pers_img = equi2pers(
         equi=equi_img,
         rots=rots,
@@ -474,7 +476,7 @@ def process_frame_pre_segmented_360(outputDirs, frame_counter, frame, yaw, pitch
     class_name = "NULL"
 
     if save_image == True:
-        # Add a red filled circle at a specific (x, y) position
+        # Add a red-filled circle at a specific (x, y) position
         circle_radius = 8
         plt.imshow(pers_img_pil)
         plt.axis('off') # To turn off axes
@@ -507,8 +509,8 @@ def process_frame_360(frame, yaw, pitch, current_eye_gaze, text_prompt_custom, r
     pers_img_pil = calculate_view(frame, yaw, pitch)
 
     if (return_segmented_image):
-        detected_class, segmented_image = process_image(image_source=pers_img_pil, current_eye_gaze=current_eye_gaze, text_prompt=text_prompt_custom, model_t=groundingdino_model, return_segmented_image=True, sam_predictor=sam_predictor_hq)
+        detected_class, segmented_image = process_image(image_source=pers_img_pil, current_eye_gaze=current_eye_gaze, text_prompt=text_prompt_custom, model_t=groundingdino_model, return_segmented_image=True, sam_predictor=predictor_21)
         return detected_class, segmented_image
     else: 
-        detected_class, _ = process_image(image_source=pers_img_pil, current_eye_gaze=current_eye_gaze, text_prompt=text_prompt_custom, model_t=groundingdino_model, return_segmented_image=False, sam_predictor=sam_predictor_hq)
+        detected_class, _ = process_image(image_source=pers_img_pil, current_eye_gaze=current_eye_gaze, text_prompt=text_prompt_custom, model_t=groundingdino_model, return_segmented_image=False, sam_predictor=predictor_21)
         return detected_class, _
