@@ -64,10 +64,6 @@ print("device used: " + str(device))
 ckpt_repo_id = "ShilongLiu/GroundingDINO"
 ckpt_filenmae = "groundingdino_swinb_cogcoor.pth"
 ckpt_config_filename = "GroundingDINO_SwinB.cfg.py"
-sam_checkpoint = "sam_vit_h_4b8939.pth"
-#sam_model = build_sam(checkpoint=sam_checkpoint).to(device)
-# old version
-#sam_predictor = SamPredictor(sam_model)
 
 plt.figure(figsize=(10, 10))
 
@@ -378,7 +374,7 @@ def process_image(image_source, current_eye_gaze, text_prompt, return_segmented_
     boxes_filt = boxes_filt.to(device)
     transformed_boxes = predictor_21.transform.apply_boxes_torch(boxes_filt, image.shape[:2])
 
-    masks, _, _ = predictor_21.predict_torch(
+    masks, _, _ = predictor_21.predict(
             point_coords = None,
             point_labels = None,
             boxes = transformed_boxes,
