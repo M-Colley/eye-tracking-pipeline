@@ -15,7 +15,7 @@
 
 
 7. Follow installation guide of [Grounded Segment Anything 2](https://github.com/IDEA-Research/Grounded-SAM-2) (use [SAM 2.1](https://github.com/facebookresearch/sam2?tab=readme-ov-file#latest-updates)) without Docker (environment variables etc.)
-8. We use sam2.1_hiera_large.pt, download weights from [here]([https://github.com/SysCV/sam-hq/issues/5](https://dl.fbaipublicfiles.com/segment_anything_2/092824/sam2.1_hiera_large.pt)) and put them into the root of our directory (`functions.py` looks for it there)
+8. We use `sam2.1_hiera_large.pt`, download weights from [here]([https://github.com/SysCV/sam-hq/issues/5](https://dl.fbaipublicfiles.com/segment_anything_2/092824/sam2.1_hiera_large.pt)) and put them into the root of our directory (`functions_grounding_dino.py` looks for it there)
 
 
 ## Notes
