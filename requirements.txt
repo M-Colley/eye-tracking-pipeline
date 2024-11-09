@@ -6,6 +6,7 @@ numpy>=2.1.3
 ninja
 progress
 progressbar
+pyequilib
 
 addict
 diffusers
